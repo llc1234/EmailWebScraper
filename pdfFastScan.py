@@ -69,7 +69,7 @@ class PDFScraper:
         
         print("\nScraping complete!")
         if self.found_pdfs:
-            print(f"\n------------------ Found {len(self.found_pdfs)} PDF documents ------------------")
+            print(f"\n------------------------------------- Found {len(self.found_pdfs)} PDF documents -------------------------------------")
             for pdf_url, source_urls in self.found_pdfs.items():
                 print(f"\nPDF: {pdf_url}")
                 print(f"Found on {len(source_urls)} pages:")
