@@ -203,8 +203,8 @@ if __name__ == "__main__":
     if not target_url.startswith(('http://', 'https://')):
         target_url = 'https://' + target_url
     
-    max_pages = input("Enter maximum number of pages to scrape (default 5): ").strip()
-    max_pages = int(max_pages) if max_pages.isdigit() else 5
+    max_pages = input("Enter maximum number of pages to scrape (default 3): ").strip()
+    max_pages = int(max_pages) if max_pages.isdigit() else 3
 
     delay = input("Enter maximum number of delay (default 0.5 sec): ").strip()
     delay = float(delay) if delay.isdigit() else 0.5
