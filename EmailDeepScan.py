@@ -181,21 +181,45 @@ class EmailScraper:
             
             time.sleep(delay)  # Respect crawl delay
 
-    def report(self):
-        print("\n" + "="*60)
-        print(f"Crawling Report for {self.base_url}")
-        print(f"Pages crawled: {len(self.visited)}")
-        print(f"Broken links: {len(self.broken_links)}")
-        print(f"Unique emails found: {len(self.emails)}")
-        
-        print("\nEmails:")
-        for email in sorted(self.emails):
-            print(f" - {email}")
+    def report(self, writetofile):
+        if not writetofile == "":
+            print("\n" + "=" * 60)
+            print(f"Crawling Report for {self.base_url}")
+            print(f"Pages crawled: {len(self.visited)}")
+            print(f"Broken links: {len(self.broken_links)}")
+            print(f"Unique emails found: {len(self.emails)}")
             
-        if self.broken_links:
-            print("\nBroken Links:")
-            for link in sorted(self.broken_links):
-                print(f" - {link}")
+            with open(writetofile, "w") as r:
+                r.write("\n" + "=" * 60 + "\n")
+                r.write(f"Crawling Report for {self.base_url}" + "\n")
+                r.write(f"Pages crawled: {len(self.visited)}" + "\n")
+                r.write(f"Broken links: {len(self.broken_links)}" + "\n")
+                r.write(f"Unique emails found: {len(self.emails)}" + "\n")
+                
+                r.write("\nEmails:")
+                for email in sorted(self.emails):
+                    r.write(f" - {email}" + "\n")
+                    
+                if self.broken_links:
+                    r.write("\nBroken Links:")
+                    for link in sorted(self.broken_links):
+                        r.write(f" - {link}" + "\n")
+
+        else:
+            print("\n" + "=" * 60)
+            print(f"Crawling Report for {self.base_url}")
+            print(f"Pages crawled: {len(self.visited)}")
+            print(f"Broken links: {len(self.broken_links)}")
+            print(f"Unique emails found: {len(self.emails)}")
+            
+            print("\nEmails:")
+            for email in sorted(self.emails):
+                print(f" - {email}")
+                
+            if self.broken_links:
+                print("\nBroken Links:")
+                for link in sorted(self.broken_links):
+                    print(f" - {link}")
 
 
 if __name__ == "__main__":
@@ -208,7 +232,9 @@ if __name__ == "__main__":
 
     delay = input("Enter maximum number of delay (default 0.5 sec): ").strip()
     delay = float(delay) if delay.isdigit() else 0.5
+
+    writetofile = input("Enter the Save File for the scan (e.g., emailscan.txt): ")
     
     scraper = EmailScraper(target_url)
     scraper.crawl(max_depth=max_pages, delay=delay)
-    scraper.report()
+    scraper.report(writetofile)
