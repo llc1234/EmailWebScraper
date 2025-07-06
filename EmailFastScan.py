@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from collections import deque
 
 class EmailScraper:
-    def __init__(self, start_url, max_pages=50):
+    def __init__(self, start_url, max_pages, writetofile):
         self.start_url = start_url
         self.max_pages = max_pages
         self.visited_urls = set()
@@ -16,6 +16,8 @@ class EmailScraper:
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'})
         self.found_emails = set()
+
+        self.writetofile = writetofile
 
     def is_valid_url(self, url):
         parsed = urlparse(url)
@@ -59,13 +61,27 @@ class EmailScraper:
             
             self.get_all_links(current_url)
         
-        print("\nScraping complete!")
-        if self.found_emails:
-            print(f"\n------------------ Found {len(self.found_emails)} emails ------------------")
-            for email in sorted(self.found_emails):
-                print(email)
+        
+        if not self.writetofile == "":
+            print("\nScraping complete!")
+            with open(self.writetofile, "w") as r:
+                if self.found_emails:
+                    r.write(f"\n------------------ Found {len(self.found_emails)} emails ------------------\n\n\n")
+                    for email in sorted(self.found_emails):
+                        r.write(" - " + email + "\n")
+                else:
+                    r.write("No emails found.\n")
+            print("\nWriting to file complete!")
         else:
-            print("No emails found.")
+            print("\nScraping complete!")
+            if self.found_emails:
+                print(f"\n------------------ Found {len(self.found_emails)} emails ------------------")
+                for email in sorted(self.found_emails):
+                    print(email)
+            else:
+                print("No emails found.")
+
+        
 
 if __name__ == "__main__":
     start_url = input("Enter the starting URL (e.g., https://example.com): ").strip()
@@ -74,6 +90,8 @@ if __name__ == "__main__":
     
     max_pages = input("Enter maximum number of pages to scrape (default 50): ").strip()
     max_pages = int(max_pages) if max_pages.isdigit() else 50
+
+    writetofile = input("Enter the Save File for the scan (e.g., emailscan.txt): ")
     
-    scraper = EmailScraper(start_url, max_pages)
+    scraper = EmailScraper(start_url, max_pages, writetofile)
     scraper.scrape()
