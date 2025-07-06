@@ -1,4 +1,3 @@
-import re
 import requests
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
@@ -14,46 +13,76 @@ class SensitiveFileScraper:
         self.domain = urlparse(start_url).netloc
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'})
-        self.found_files = {}  # Dictionary: file URL -> set of source URLs
-        # Common sensitive file patterns
-        self.sensitive_patterns = [
-            r'\.(bak|backup|old|orig|save|copy|bkp)$',  # Backup files
-            r'\.(swp|swo|tmp|temp)$',  # Temporary files
-            r'\.(log|error|err)$',  # Log files
-            r'\.(env|config|conf|cfg|ini|properties)$',  # Configuration files
-            r'\.(sql|db|sqlite|mdb)$',  # Database files
-            r'\.(pem|key|crt|cer|pfx|p12)$',  # Certificate files
-            r'(password|passwd|pwd|secret|credential|key)\.(txt|md|csv|json)$',  # Credential files
-            r'(wp-config|htaccess|htpasswd|gitconfig|bashrc|bash_history|ssh/id_rsa)$',  # Common sensitive files
-            r'\.(git|svn|hg|bzr)$',  # Version control files
-            r'\.(ds_store|idea|vscode)$',  # IDE/OS metadata
-            r'~$',  # Tilde backup files
-            r'\.(yaml|yml|xml)$'  # Additional config files
-        ]
+        self.found_files = {}
+        
+        # Common file extensions
+        self.file_extensions = {
+            # Documents
+            '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.rtf', '.txt', 
+            '.odt', '.ods', '.odp', '.tex', '.log', '.csv', '.accd', '.accdb',
+            # Images
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.psd', '.ai', '.svg', '.raw', '.cr2', '.nef',
+            # Audio
+            '.mp3', '.wav', '.flac', '.midi', '.ogg',
+            # Video
+            '.avi', '.mov', '.mp4', '.mpeg', '.mpeg2', '.mpeg3', '.mpg', '.mkv', '.flv', '.3gp', '.m4v', '.wmv',
+            # Archives & Backups
+            '.zip', '.rar', '.7z', '.tar', '.gz', '.bak', '.backup', '.wbcat',
+            # Code & Developer Files
+            '.py', '.html', '.htm', '.php', '.js', '.css', '.cpp', '.c', '.java', 
+            '.cs', '.vb', '.asp', '.aspx', '.cgi', '.pl', '.sh', '.ps1',
+            # Databases
+            '.sql', '.db', '.dbf', '.mdb', '.accdb', '.accd', '.kdbx'
+        }
+        
+        # Sensitive file patterns (both extensions and filenames)
+        self.sensitive_patterns = {
+            # Configuration files
+            '.env', '.htaccess', '.htpasswd', '.conf', '.config', '.yml', '.yaml', 
+            '.ini', '.cfg', '.properties', '.gitignore', '.gitconfig',
+            # Security files
+            'id_rsa', 'id_dsa', '.pem', '.key', '.kdbx', 'oauth', 'token',
+            # Backup files
+            '.bak', '.backup', '.swp', '.swo', '~',
+            # Log files
+            '.log', 'error.log',
+            # Database files
+            '.sql', '.dump', '.db', '.mdb',
+            # History files
+            '.bash_history', '.zsh_history', '_history',
+            # Server files
+            'php.ini', 'web.config', 'robots.txt',
+            # Dependency files
+            'package-lock.json', 'yarn.lock', 'pipfile.lock', 'requirements.txt'
+        }
 
     def is_valid_url(self, url):
         parsed = urlparse(url)
         return bool(parsed.netloc) and parsed.netloc == self.domain
 
     def is_sensitive_file(self, url):
-        """Check if URL points to a potentially sensitive file"""
+        """Check if URL points to a sensitive file"""
         parsed = urlparse(url)
         path = parsed.path.lower()
+        basename = path.split('/')[-1]  # Get filename only
         
-        # Check against sensitive patterns
-        for pattern in self.sensitive_patterns:
-            if re.search(pattern, path, re.IGNORECASE):
+        # Check by file extension
+        if '.' in basename:
+            ext = '.' + basename.split('.')[-1]
+            if ext in self.file_extensions:
                 return True
         
-        # Check for common sensitive filenames
-        sensitive_names = [
-            '.htaccess', '.htpasswd', '.env', '.gitignore', 
-            'wp-config.php', 'config.php', 'secrets.txt', 
-            'credentials.json', 'dockerfile', 'compose.yml',
-            'id_rsa', 'id_dsa', 'known_hosts', 'authorized_keys'
-        ]
-        filename = path.split('/')[-1]
-        if filename in sensitive_names:
+        # Check by sensitive filename patterns
+        for pattern in self.sensitive_patterns:
+            if pattern in basename:
+                return True
+        
+        # Check common sensitive filenames without extensions
+        sensitive_names = {
+            'env', 'htaccess', 'htpasswd', 'id_rsa', 'id_dsa', 'oauth', 'token',
+            'robots', 'phpinfo', 'web', 'gitignore', 'bash_history'
+        }
+        if basename in sensitive_names:
             return True
             
         return False
@@ -64,18 +93,15 @@ class SensitiveFileScraper:
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Extract all links
             for a_tag in soup.find_all('a', href=True):
                 href = a_tag['href']
                 full_url = urljoin(url, href)
                 
-                # Handle sensitive files separately
                 if self.is_sensitive_file(full_url):
                     if full_url not in self.found_files:
                         self.found_files[full_url] = set()
                     self.found_files[full_url].add(url)
                     print(f"Found sensitive file: {full_url} (on {url})")
-                # Process regular links
                 elif self.is_valid_url(full_url) and full_url not in self.visited_urls:
                     self.urls_to_visit.append(full_url)
                     
@@ -95,9 +121,9 @@ class SensitiveFileScraper:
         
         print("\nScraping complete!")
         if self.found_files:
-            print(f"\n------------------ Found {len(self.found_files)} potentially sensitive files ------------------")
+            print(f"\nFound {len(self.found_files)} sensitive files:")
             for file_url, source_urls in self.found_files.items():
-                print(f"\nSensitive file: {file_url}")
+                print(f"\nFile: {file_url}")
                 print(f"Found on {len(source_urls)} pages:")
                 for idx, source in enumerate(source_urls, 1):
                     print(f"  {idx}. {source}")
